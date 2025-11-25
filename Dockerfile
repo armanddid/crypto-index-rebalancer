@@ -11,11 +11,15 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and fix script
 COPY package*.json ./
+COPY fix-sdk-imports.js ./
 
 # Install dependencies
 RUN npm ci --include=dev
+
+# Run the fix manually to ensure it's applied
+RUN node fix-sdk-imports.js
 
 # Copy source code
 COPY . .

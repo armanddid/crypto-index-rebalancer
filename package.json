@@ -4,6 +4,10 @@
   "description": "Crypto index fund management with automatic rebalancing via NEAR Intents",
   "main": "dist/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/server.ts",

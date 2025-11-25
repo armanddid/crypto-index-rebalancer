@@ -131,6 +131,10 @@ export const rebalanceSchema = z.object({
   dryRun: z.boolean().default(false),
 });
 
+export const triggerRebalanceSchema = z.object({
+  baseAssetId: z.string().optional(),
+});
+
 export const liquidateSchema = z.object({
   targetAsset: z.string().min(1, 'Target asset is required').toUpperCase(),
   targetChain: z.enum(['ethereum', 'solana', 'near', 'bitcoin']),

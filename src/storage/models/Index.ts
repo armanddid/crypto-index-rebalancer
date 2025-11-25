@@ -250,6 +250,15 @@ export function listIndicesByStatus(status: IndexStatus): Index[] {
 }
 
 /**
+ * Find indexes by account ID
+ */
+export function findIndexesByAccountId(accountId: string): Index[] {
+  const stmt = db.prepare('SELECT * FROM indices WHERE account_id = ? ORDER BY created_at DESC');
+  const rows = stmt.all(accountId) as IndexRow[];
+  return rows.map(rowToIndex);
+}
+
+/**
  * Check if account owns index
  */
 export function accountOwnsIndex(accountId: string, indexId: string): boolean {

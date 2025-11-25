@@ -1,11 +1,11 @@
 // Core type definitions for the Crypto Index Rebalancer
 
-export type RebalancingMethod = 'none' | 'daily' | 'drift_based' | 'hybrid';
-export type IndexStatus = 'pending_funding' | 'active' | 'paused' | 'stopped';
-export type TradeType = 'deposit' | 'withdrawal' | 'rebalance';
-export type TradeAction = 'buy' | 'sell';
-export type TradeStatus = 'pending' | 'executing' | 'completed' | 'failed';
-export type RebalanceStatus = 'pending' | 'executing' | 'completed' | 'failed';
+export type RebalancingMethod = 'NONE' | 'DAILY' | 'DRIFT' | 'HYBRID';
+export type IndexStatus = 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DELETED';
+export type TradeType = 'BUY' | 'SELL';
+export type TradeAction = 'BUY' | 'SELL';
+export type TradeStatus = 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED';
+export type RebalanceStatus = 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED';
 export type Chain = 'ethereum' | 'solana' | 'near' | 'bitcoin';
 
 // User
@@ -38,7 +38,7 @@ export interface DepositAddresses {
 // Asset Allocation
 export interface AssetAllocation {
   symbol: string;
-  chain: Chain;
+  chain?: Chain;
   percentage: number;
 }
 
@@ -123,7 +123,7 @@ export interface Webhook {
   events: string[];
   description?: string;
   secret: string;
-  enabled: boolean;
+  active: boolean;
   failureCount: number;
   lastTriggeredAt: string | null;
   createdAt: string;
@@ -202,7 +202,18 @@ export interface NEARIntentsSwapStatus {
 export interface Wallet {
   address: string;
   privateKey: string;
+  publicKey?: string;
   mnemonic?: string;
+}
+
+// NEAR Intents Supported Token (re-export from nearIntentsTypes)
+export interface SupportedToken {
+  assetId: string;
+  symbol: string;
+  blockchain: string;
+  decimals: number;
+  price?: number;
+  icon?: string;
 }
 
 // Pagination

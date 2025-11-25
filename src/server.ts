@@ -3,6 +3,7 @@
 import dotenv from 'dotenv';
 import app from './api/server.js';
 import { initializeDatabase, closeDatabase } from './storage/database.js';
+import { initializeJobs, stopJobs } from './jobs/index.js';
 import { logger } from './utils/logger.js';
 
 // Load environment variables
@@ -24,6 +25,14 @@ const server = app.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  
+  // Initialize background jobs
+  try {
+    initializeJobs();
+    logger.info('✅ Background jobs initialized');
+  } catch (error) {
+    logger.error('Failed to initialize background jobs:', error);
+  }
 });
 
 // Graceful shutdown
@@ -31,6 +40,7 @@ process.on('SIGTERM', () => {
   logger.info('SIGTERM signal received: closing HTTP server');
   server.close(() => {
     logger.info('HTTP server closed');
+    stopJobs();
     closeDatabase();
     process.exit(0);
   });
@@ -40,6 +50,7 @@ process.on('SIGINT', () => {
   logger.info('SIGINT signal received: closing HTTP server');
   server.close(() => {
     logger.info('HTTP server closed');
+    stopJobs();
     closeDatabase();
     process.exit(0);
   });

@@ -121,9 +121,13 @@ export interface Webhook {
   userId: string;
   url: string;
   events: string[];
+  description?: string;
   secret: string;
-  active: boolean;
+  enabled: boolean;
+  failureCount: number;
+  lastTriggeredAt: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 // Performance Metrics

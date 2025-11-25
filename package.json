@@ -31,7 +31,8 @@
     "test:real:portfolio": "tsx src/tests/testRealPortfolioWithWallet1.ts",
     "check:swap": "tsx src/tests/checkSwapStatus.ts",
     "test:sdk:swap": "tsx src/tests/testSDKSwap.ts",
-    "test:full-rebalancing": "tsx src/tests/testFullRebalancingBaseUSDC.ts"
+    "test:full-rebalancing": "tsx src/tests/testFullRebalancingBaseUSDC.ts",
+    "test:background-jobs": "tsx src/tests/testBackgroundJobs.ts"
   },
   "keywords": [
     "crypto",

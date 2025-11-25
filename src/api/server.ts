@@ -12,6 +12,7 @@ import accountRoutes from './routes/accounts.js';
 import assetRoutes from './routes/assets.js';
 import depositRoutes from './routes/deposits.js';
 import indexRoutes from './routes/indexes.js';
+import webhookRoutes from './routes/webhooks.js';
 import adminRoutes from './routes/admin.js';
 
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/deposits', depositRoutes);
 app.use('/api/indexes', indexRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 404 handler

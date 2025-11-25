@@ -241,6 +241,15 @@ export function deleteIndex(indexId: string): boolean {
 }
 
 /**
+ * List indexes by status
+ */
+export function listIndicesByStatus(status: IndexStatus): Index[] {
+  const stmt = db.prepare('SELECT * FROM indices WHERE status = ? ORDER BY created_at DESC');
+  const rows = stmt.all(status) as any[];
+  return rows.map(rowToIndex);
+}
+
+/**
  * Check if account owns index
  */
 export function accountOwnsIndex(accountId: string, indexId: string): boolean {

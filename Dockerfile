@@ -15,8 +15,11 @@ WORKDIR /app
 COPY package*.json ./
 COPY patches ./patches
 
-# Install dependencies (postinstall will apply patches automatically)
+# Install dependencies
 RUN npm ci --include=dev
+
+# Explicitly apply patches (in case postinstall didn't run)
+RUN npx patch-package
 
 # Copy source code
 COPY . .

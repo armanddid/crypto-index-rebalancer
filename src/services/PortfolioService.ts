@@ -377,8 +377,8 @@ export class PortfolioService {
     // 4. Create trade record
     const trade = createTrade(
       indexId,
-      tradeType === 'BUY' ? 'buy' : 'sell',
-      tradeType === 'BUY' ? 'buy' : 'sell',
+      tradeType,
+      tradeType,
       fromSymbol,
       toSymbol,
       fromAmount,

@@ -52,10 +52,10 @@ export class IntentsTransactionSigner {
         const quote = await nearIntentsClient.requestQuote(quoteWithWallet);
 
         logger.info('INTENTS swap executed successfully', {
-          depositAddress: quote.depositAddress || 'N/A (direct swap)',
-          amountIn: quote.amountIn,
-          amountOut: quote.amountOut,
-          timeEstimate: quote.timeEstimate,
+          depositAddress: quote.quote.depositAddress || 'N/A (direct swap)',
+          amountIn: quote.quote.amountIn,
+          amountOut: quote.quote.amountOut,
+          timeEstimate: quote.quote.timeEstimate,
         });
 
         return quote;
@@ -103,10 +103,10 @@ export class IntentsTransactionSigner {
       const quote = await nearIntentsClient.requestQuote(quoteRequest);
 
       logger.info('Deposit swap quote received', {
-        depositAddress: quote.depositAddress,
-        amountIn: quote.amountIn,
-        amountOut: quote.amountOut,
-        deadline: quote.deadline,
+        depositAddress: quote.quote.depositAddress,
+        amountIn: quote.quote.amountIn,
+        amountOut: quote.quote.amountOut,
+        deadline: quote.quote.deadline,
       });
 
       // TODO: In a production system, we would:

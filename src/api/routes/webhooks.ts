@@ -4,7 +4,7 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
 import {
   createWebhook,
   findWebhookById,
@@ -36,23 +36,23 @@ const createWebhookSchema = z.object({
     'drift.threshold_exceeded',
   ])).min(1, 'At least one event is required'),
   description: z.string().optional(),
-  enabled: z.boolean().optional().default(true),
+  active: z.boolean().optional().default(true),
 });
 
 const updateWebhookSchema = z.object({
   url: z.string().url('Invalid URL').optional(),
   events: z.array(z.string()).optional(),
   description: z.string().optional(),
-  enabled: z.boolean().optional(),
+  active: z.boolean().optional(),
 });
 
 /**
  * POST /api/webhooks
  * Create a new webhook
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const validated = createWebhookSchema.parse(req.body);
 
     logger.info('Creating webhook', { userId, url: validated.url });
@@ -61,9 +61,9 @@ router.post('/', authenticate, async (req, res, next) => {
     const testResult = await webhookService.testWebhook(validated.url);
     if (!testResult.success) {
       throw new AppError(
+        400,
         `Webhook URL test failed: ${testResult.error}`,
-        'WEBHOOK_TEST_FAILED',
-        400
+        'WEBHOOK_TEST_FAILED'
       );
     }
 
@@ -72,7 +72,7 @@ router.post('/', authenticate, async (req, res, next) => {
       validated.url,
       validated.events,
       validated.description,
-      validated.enabled
+      validated.active
     );
 
     res.status(201).json({
@@ -82,7 +82,7 @@ router.post('/', authenticate, async (req, res, next) => {
         url: webhook.url,
         events: webhook.events,
         description: webhook.description,
-        enabled: webhook.enabled,
+        active: webhook.active,
         createdAt: webhook.createdAt,
       },
     });
@@ -95,9 +95,9 @@ router.post('/', authenticate, async (req, res, next) => {
  * GET /api/webhooks
  * List all webhooks for the authenticated user
  */
-router.get('/', authenticate, async (req, res, next) => {
+router.get('/', authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
 
     logger.info('Listing webhooks', { userId });
 
@@ -110,7 +110,7 @@ router.get('/', authenticate, async (req, res, next) => {
         url: w.url,
         events: w.events,
         description: w.description,
-        enabled: w.enabled,
+        active: w.active,
         failureCount: w.failureCount,
         lastTriggeredAt: w.lastTriggeredAt,
         createdAt: w.createdAt,
@@ -127,21 +127,21 @@ router.get('/', authenticate, async (req, res, next) => {
  * GET /api/webhooks/:webhookId
  * Get webhook details
  */
-router.get('/:webhookId', authenticate, async (req, res, next) => {
+router.get('/:webhookId', authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const { webhookId } = req.params;
 
     logger.info('Getting webhook', { userId, webhookId });
 
     const webhook = findWebhookById(webhookId);
     if (!webhook) {
-      throw new AppError('Webhook not found', 'WEBHOOK_NOT_FOUND', 404);
+      throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
     }
 
     // Verify ownership
     if (webhook.userId !== userId) {
-      throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+      throw new AppError(403, 'Unauthorized', 'UNAUTHORIZED');
     }
 
     res.json({
@@ -151,7 +151,7 @@ router.get('/:webhookId', authenticate, async (req, res, next) => {
         url: webhook.url,
         events: webhook.events,
         description: webhook.description,
-        enabled: webhook.enabled,
+        active: webhook.active,
         failureCount: webhook.failureCount,
         lastTriggeredAt: webhook.lastTriggeredAt,
         createdAt: webhook.createdAt,
@@ -167,9 +167,9 @@ router.get('/:webhookId', authenticate, async (req, res, next) => {
  * PUT /api/webhooks/:webhookId
  * Update webhook
  */
-router.put('/:webhookId', authenticate, async (req, res, next) => {
+router.put('/:webhookId', authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const { webhookId } = req.params;
     const validated = updateWebhookSchema.parse(req.body);
 
@@ -177,12 +177,12 @@ router.put('/:webhookId', authenticate, async (req, res, next) => {
 
     const webhook = findWebhookById(webhookId);
     if (!webhook) {
-      throw new AppError('Webhook not found', 'WEBHOOK_NOT_FOUND', 404);
+      throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
     }
 
     // Verify ownership
     if (webhook.userId !== userId) {
-      throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+      throw new AppError(403, 'Unauthorized', 'UNAUTHORIZED');
     }
 
     // Test new URL if provided
@@ -190,9 +190,9 @@ router.put('/:webhookId', authenticate, async (req, res, next) => {
       const testResult = await webhookService.testWebhook(validated.url);
       if (!testResult.success) {
         throw new AppError(
+          400,
           `Webhook URL test failed: ${testResult.error}`,
-          'WEBHOOK_TEST_FAILED',
-          400
+          'WEBHOOK_TEST_FAILED'
         );
       }
     }
@@ -206,7 +206,7 @@ router.put('/:webhookId', authenticate, async (req, res, next) => {
         url: updated!.url,
         events: updated!.events,
         description: updated!.description,
-        enabled: updated!.enabled,
+        active: updated!.active,
         failureCount: updated!.failureCount,
         lastTriggeredAt: updated!.lastTriggeredAt,
         updatedAt: updated!.updatedAt,
@@ -221,26 +221,26 @@ router.put('/:webhookId', authenticate, async (req, res, next) => {
  * DELETE /api/webhooks/:webhookId
  * Delete webhook
  */
-router.delete('/:webhookId', authenticate, async (req, res, next) => {
+router.delete('/:webhookId', authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const { webhookId } = req.params;
 
     logger.info('Deleting webhook', { userId, webhookId });
 
     const webhook = findWebhookById(webhookId);
     if (!webhook) {
-      throw new AppError('Webhook not found', 'WEBHOOK_NOT_FOUND', 404);
+      throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
     }
 
     // Verify ownership
     if (webhook.userId !== userId) {
-      throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+      throw new AppError(403, 'Unauthorized', 'UNAUTHORIZED');
     }
 
     const deleted = deleteWebhook(webhookId);
     if (!deleted) {
-      throw new AppError('Failed to delete webhook', 'DELETE_FAILED', 500);
+      throw new AppError(500, 'Failed to delete webhook', 'DELETE_FAILED');
     }
 
     res.json({
@@ -256,21 +256,21 @@ router.delete('/:webhookId', authenticate, async (req, res, next) => {
  * POST /api/webhooks/:webhookId/test
  * Test webhook
  */
-router.post('/:webhookId/test', authenticate, async (req, res, next) => {
+router.post('/:webhookId/test', authenticate, async (req: AuthRequest, res, next) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const { webhookId } = req.params;
 
     logger.info('Testing webhook', { userId, webhookId });
 
     const webhook = findWebhookById(webhookId);
     if (!webhook) {
-      throw new AppError('Webhook not found', 'WEBHOOK_NOT_FOUND', 404);
+      throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
     }
 
     // Verify ownership
     if (webhook.userId !== userId) {
-      throw new AppError('Unauthorized', 'UNAUTHORIZED', 403);
+      throw new AppError(403, 'Unauthorized', 'UNAUTHORIZED');
     }
 
     const testResult = await webhookService.testWebhook(webhook.url);

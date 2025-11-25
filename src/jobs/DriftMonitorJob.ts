@@ -92,7 +92,7 @@ export class DriftMonitorJob {
       }
 
       // Calculate current drift
-      const driftAnalysis = await indexService.calculateDrift(indexId);
+      const driftAnalysis = await indexService.calculateCurrentDrift(indexId);
 
       logger.info('Drift calculated', {
         indexId,
@@ -133,7 +133,7 @@ export class DriftMonitorJob {
         });
 
         // Trigger rebalancing
-        const rebalanced = await indexService.triggerRebalance(indexId);
+        const rebalanced = await indexService.executeRebalancing(indexId);
 
         if (rebalanced) {
           logger.info('Automatic rebalancing completed', { indexId });

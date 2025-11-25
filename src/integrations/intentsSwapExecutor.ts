@@ -175,8 +175,8 @@ export async function executeIntentsSwap(params: IntentsSwapParams): Promise<Int
       status: status.status,
       intentHash: result.intentHash,
       settlementTxHash: intentTx.hash,
-      destinationTxHash: status.destinationTxHash,
-      amountOut: status.amountOut,
+      destinationTxHash: status.swapDetails?.destinationChainTxHashes?.[0]?.hash,
+      amountOut: status.swapDetails?.amountOut,
       depositAddress: quote.quote.depositAddress,
     });
 
@@ -184,8 +184,8 @@ export async function executeIntentsSwap(params: IntentsSwapParams): Promise<Int
       depositAddress: quote.quote.depositAddress,
       depositTxHash: intentTx.hash, // Settlement transaction hash
       status: status.status as any,
-      destinationTxHash: status.destinationTxHash,
-      amountOut: status.amountOut,
+      destinationTxHash: status.swapDetails?.destinationChainTxHashes?.[0]?.hash,
+      amountOut: status.swapDetails?.amountOut,
     };
 
   } catch (error: any) {
@@ -220,8 +220,8 @@ export async function checkIntentsSwapStatus(depositAddress: string): Promise<In
     return {
       depositAddress,
       status: status.status as any,
-      destinationTxHash: status.destinationTxHash,
-      amountOut: status.amountOut,
+      destinationTxHash: status.swapDetails?.destinationChainTxHashes?.[0]?.hash,
+      amountOut: status.swapDetails?.amountOut,
     };
 
   } catch (error: any) {

@@ -69,12 +69,13 @@ async function testFullRebalancing() {
       'Test index for Base USDC rebalancing',
       targetAllocation,
       {
-        method: 'NONE', // No auto-rebalancing for this test
+        method: 'DRIFT', // Drift-based rebalancing
         driftThreshold: 5,
+        minRebalanceInterval: '24h',
       },
       {
-        maxDrawdown: 20,
-        stopLoss: 15,
+        maxSlippage: 1,
+        maxTradeSize: 10000,
       }
     );
 

@@ -5,7 +5,7 @@ import { Webhook } from '../../types/index.js';
 import { WebhookRow } from '../../types/database.js';
 import { generateId } from '../../utils/crypto.js';
 
-function rowToWebhook(row: WebhookRow): Webhook {
+function rowToWebhook(row: any): Webhook {
   return {
     webhookId: row.webhook_id,
     userId: row.user_id,
@@ -13,7 +13,7 @@ function rowToWebhook(row: WebhookRow): Webhook {
     events: JSON.parse(row.events) as string[],
     description: row.description || undefined,
     secret: row.secret,
-    enabled: row.active === 1,
+    active: row.active === 1,
     failureCount: row.failure_count || 0,
     lastTriggeredAt: row.last_triggered_at || null,
     createdAt: row.created_at,
@@ -26,7 +26,7 @@ export function createWebhook(
   url: string,
   events: string[],
   description?: string,
-  enabled: boolean = true
+  active: boolean = true
 ): Webhook {
   const webhookId = generateId('whk');
   const now = new Date().toISOString();
@@ -37,7 +37,7 @@ export function createWebhook(
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  stmt.run(webhookId, userId, url, JSON.stringify(events), description || null, secret, enabled ? 1 : 0, 0, now, now);
+  stmt.run(webhookId, userId, url, JSON.stringify(events), description || null, secret, active ? 1 : 0, 0, now, now);
 
   return {
     webhookId,
@@ -46,7 +46,7 @@ export function createWebhook(
     events,
     description,
     secret,
-    enabled,
+    active,
     failureCount: 0,
     lastTriggeredAt: null,
     createdAt: now,

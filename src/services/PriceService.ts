@@ -26,6 +26,10 @@ export class PriceService {
     try {
       const price = await nearIntentsClient.getTokenPrice(symbol);
       
+      if (price === null) {
+        throw new Error(`Price not available for ${symbol}`);
+      }
+      
       // Cache the result
       this.priceCache.set(symbol, {
         price,

@@ -44,8 +44,10 @@ export function deriveNearImplicitAccountId(publicKey: string): string {
  * @param wallet - An ethers.js Wallet instance
  * @returns The NEAR implicit account ID
  */
-export function getNearAccountIdFromWallet(wallet: ethers.Wallet): string {
-  return deriveNearImplicitAccountId(wallet.publicKey);
+export function getNearAccountIdFromWallet(wallet: ethers.Wallet | ethers.HDNodeWallet): string {
+  // Get the public key from the signing key
+  const publicKey = wallet.signingKey.publicKey;
+  return deriveNearImplicitAccountId(publicKey);
 }
 
 /**
@@ -73,8 +75,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   
   console.log('Test Wallet:');
   console.log(`  EVM Address: ${wallet.address}`);
-  console.log(`  Public Key: ${wallet.publicKey}`);
-  console.log(`  Public Key Length: ${wallet.publicKey.length}`);
+  console.log(`  Public Key: ${wallet.signingKey.publicKey}`);
+  console.log(`  Public Key Length: ${wallet.signingKey.publicKey.length}`);
   console.log('');
 
   try {

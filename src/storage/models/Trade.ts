@@ -54,7 +54,7 @@ export function createTrade(
     fromAsset,
     toAsset,
     amount,
-    status: 'pending',
+    status: 'PENDING',
     retryAttempt: 0,
     createdAt: now,
   };

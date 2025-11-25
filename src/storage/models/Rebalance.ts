@@ -42,7 +42,7 @@ export function createRebalance(
     indexId,
     reason,
     totalDrift,
-    status: 'pending',
+    status: 'PENDING',
     tradesCount,
     completedTradesCount: 0,
     cost: 0,

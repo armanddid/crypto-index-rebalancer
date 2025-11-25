@@ -74,7 +74,7 @@ export function createIndex(
     accountId,
     name,
     description,
-    status: 'pending_funding',
+    status: 'PENDING',
     targetAllocation,
     currentAllocation: null,
     totalValue: 0,

@@ -130,9 +130,13 @@ export function initializeDatabase() {
       user_id TEXT NOT NULL,
       url TEXT NOT NULL,
       events TEXT NOT NULL,
+      description TEXT,
       secret TEXT NOT NULL,
       active INTEGER NOT NULL DEFAULT 1,
+      failure_count INTEGER NOT NULL DEFAULT 0,
+      last_triggered_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     )
   `);

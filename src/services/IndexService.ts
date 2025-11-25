@@ -30,7 +30,7 @@ export class IndexService {
       throw new Error('Index not found');
     }
 
-    if (index.status !== 'pending_funding' && index.status !== 'PENDING') {
+    if (index.status !== 'PENDING') {
       throw new Error(`Cannot construct portfolio: index status is ${index.status}`);
     }
 
@@ -77,8 +77,7 @@ export class IndexService {
 
       // Update rebalance record
       updateRebalance(rebalance.rebalanceId, {
-        status: 'completed',
-        tradesCount: trades.length,
+        status: 'COMPLETED',
         completedTradesCount: trades.filter((t) => t.status === 'COMPLETED').length,
         completedAt: new Date().toISOString(),
       });
@@ -101,7 +100,7 @@ export class IndexService {
 
       // Update rebalance record
       updateRebalance(rebalance.rebalanceId, {
-        status: 'failed',
+        status: 'FAILED',
         completedAt: new Date().toISOString(),
       });
 
@@ -186,8 +185,7 @@ export class IndexService {
 
       // Update rebalance record
       updateRebalance(rebalance.rebalanceId, {
-        status: 'completed',
-        tradesCount: trades.length,
+        status: 'COMPLETED',
         completedTradesCount: trades.filter((t) => t.status === 'COMPLETED').length,
         completedAt: new Date().toISOString(),
       });
@@ -209,7 +207,7 @@ export class IndexService {
 
       // Update rebalance record
       updateRebalance(rebalance.rebalanceId, {
-        status: 'failed',
+        status: 'FAILED',
         completedAt: new Date().toISOString(),
       });
 
@@ -273,7 +271,7 @@ export class IndexService {
     }
 
     const currentHoldings = await this.getCurrentHoldings(indexId);
-    const targetAllocation: AssetAllocation[] = JSON.parse(index.targetAllocation);
+    const targetAllocation = index.targetAllocation;
 
     const driftAnalysis = await driftCalculator.calculateDrift(
       currentHoldings,

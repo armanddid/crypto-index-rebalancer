@@ -20,12 +20,11 @@ export interface JWTPayload {
  * Generate a JWT token
  */
 export function generateToken(userId: string, email: string): string {
-  const expiresIn: string = process.env.JWT_EXPIRES_IN || '7d';
-  
+  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
   return jwt.sign(
     { userId, email },
     JWT_SECRET,
-    { expiresIn: expiresIn }
+    { expiresIn } as jwt.SignOptions
   );
 }
 
@@ -33,13 +32,12 @@ export function generateToken(userId: string, email: string): string {
  * Generate a refresh token
  */
 export function generateRefreshToken(userId: string, email: string): string {
-  const expiresIn: string = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
-  const secret: string = process.env.REFRESH_TOKEN_SECRET || JWT_SECRET;
-  
+  const expiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
+  const secret = process.env.REFRESH_TOKEN_SECRET || JWT_SECRET;
   return jwt.sign(
     { userId, email },
     secret,
-    { expiresIn: expiresIn }
+    { expiresIn } as jwt.SignOptions
   );
 }
 

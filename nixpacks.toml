@@ -1,8 +1,9 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
+nixPkgs = ["nodejs_20", "python311", "gcc", "gnumake"]
+nixLibs = ["stdenv.cc.cc"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm install --build-from-source"]
 
 [phases.build]
 cmds = ["npm run build", "npm run migrate"]

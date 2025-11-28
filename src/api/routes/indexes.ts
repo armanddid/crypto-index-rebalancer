@@ -7,7 +7,7 @@ import {
   updateIndex,
   deleteIndex,
 } from '../../storage/models/Index.js';
-import { findAccountById } from '../../storage/models/Account.js';
+import { findAccountById, listAccountsByUserId } from '../../storage/models/Account.js';
 import { createRebalance } from '../../storage/models/Rebalance.js';
 import { portfolioService } from '../../services/PortfolioService.js';
 import { driftCalculator } from '../../services/DriftCalculator.js';
@@ -188,9 +188,14 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     const userId = (req as any).userId;
 
     // Get all accounts for user
-    // TODO: Implement findAccountsByUserId
-    // For now, return empty array
+    const { accounts } = listAccountsByUserId(userId);
+    
+    // Get indexes for all user's accounts
     const indexes: Index[] = [];
+    for (const account of accounts) {
+      const accountIndexes = findIndexesByAccountId(account.accountId);
+      indexes.push(...accountIndexes);
+    }
 
     res.json({
       success: true,

@@ -265,6 +265,7 @@ router.post('/:indexId/construct', authenticate, async (req: Request, res: Respo
   try {
     const userId = (req as any).userId;
     const { indexId } = req.params;
+    const { totalUsdcAmount, baseAssetId } = req.body;
 
     const index = findIndexById(indexId);
     if (!index) {
@@ -277,10 +278,15 @@ router.post('/:indexId/construct', authenticate, async (req: Request, res: Respo
       throw new NotFoundError('Index not found');
     }
 
-    logger.info('Initial construction triggered', { indexId });
+    // Validate amount if provided
+    if (totalUsdcAmount !== undefined && (typeof totalUsdcAmount !== 'number' || totalUsdcAmount <= 0)) {
+      throw new ValidationError('totalUsdcAmount must be a positive number');
+    }
 
-    // Execute initial construction
-    await indexService.constructInitialPortfolio(indexId);
+    logger.info('Initial construction triggered', { indexId, totalUsdcAmount, baseAssetId });
+
+    // Execute initial construction with provided amount (or use default detection)
+    await indexService.constructInitialPortfolio(indexId, totalUsdcAmount, baseAssetId);
 
     res.json({
       success: true,

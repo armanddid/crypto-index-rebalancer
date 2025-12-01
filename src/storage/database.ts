@@ -66,7 +66,7 @@ export function initializeDatabase() {
       account_id TEXT NOT NULL,
       name TEXT NOT NULL,
       description TEXT,
-      status TEXT NOT NULL DEFAULT 'pending_funding',
+      status TEXT NOT NULL DEFAULT 'PENDING',
       target_allocation TEXT NOT NULL,
       current_allocation TEXT,
       total_value REAL NOT NULL DEFAULT 0,

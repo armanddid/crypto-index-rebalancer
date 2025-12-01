@@ -8,6 +8,7 @@ import { validateBody } from '../../utils/validation.js';
 import { createAccountSchema } from '../../utils/validation.js';
 import { NotFoundError, AuthorizationError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
+import { getIntentsBalances } from '../../integrations/intentsBalanceChecker.js';
 
 const router = Router();
 
@@ -126,9 +127,9 @@ router.get('/', (req: AuthRequest, res: Response, next) => {
 
 /**
  * GET /api/accounts/:accountId/balance
- * Get account balance (placeholder - would integrate with blockchain)
+ * Get account balance from EVM wallets and INTENTS vault
  */
-router.get('/:accountId/balance', (req: AuthRequest, res: Response, next) => {
+router.get('/:accountId/balance', async (req: AuthRequest, res: Response, next) => {
   try {
     const { accountId } = req.params;
     const userId = req.userId!;
@@ -144,17 +145,36 @@ router.get('/:accountId/balance', (req: AuthRequest, res: Response, next) => {
       throw new AuthorizationError('You do not have access to this account');
     }
 
-    // TODO: Integrate with blockchain to get actual balances
-    // For now, return placeholder data
+    // Initialize with EVM placeholder (existing behavior)
+    const balances: Record<string, Record<string, { amount: number; usdValue: number }>> = {
+      ethereum: {
+        ETH: { amount: 0, usdValue: 0 },
+        USDC: { amount: 0, usdValue: 0 },
+      },
+      intents: {},
+    };
+
+    let totalUsdValue = 0;
+
+    // Fetch INTENTS vault balances (NEAR-side deposits)
+    try {
+      const intentsBalances = await getIntentsBalances(account.walletAddress);
+      for (const token of intentsBalances.tokens) {
+        balances.intents[token.symbol] = {
+          amount: parseFloat(token.balanceFormatted),
+          usdValue: token.usdValue || 0,
+        };
+        totalUsdValue += token.usdValue || 0;
+      }
+    } catch (intentsError: any) {
+      logger.warn('Failed to fetch INTENTS balances', { error: intentsError.message });
+      // Continue with EVM balances only
+    }
+
     res.json({
       accountId: account.accountId,
-      balances: {
-        ethereum: {
-          ETH: { amount: 0, usdValue: 0 },
-          USDC: { amount: 0, usdValue: 0 },
-        },
-      },
-      totalUsdValue: 0,
+      balances,
+      totalUsdValue,
     });
   } catch (error) {
     next(error);

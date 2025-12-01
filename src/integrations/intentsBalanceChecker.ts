@@ -1,166 +1,158 @@
 /**
  * INTENTS Balance Checker
- * 
- * Queries actual token balances in INTENTS for a given account.
- * This is critical for rebalancing to know which tokens and amounts are available.
+ *
+ * Queries token balances in the intents.near contract for EVM addresses.
+ * Uses mt_batch_balance_of (Multi-Token NEP-245 standard) for efficient batch queries.
  */
 
-import { connect, keyStores, KeyPair } from 'near-api-js';
+import { connect, keyStores } from 'near-api-js';
 import { logger } from '../utils/logger.js';
 import { getNearRpcUrl } from '../utils/near.js';
-import { generateNearKeyPairFromEVM } from './nearKeyPairHelper.js';
 
 export interface TokenBalance {
   assetId: string;
   symbol: string;
-  balance: string; // Raw balance in smallest units
-  balanceFormatted: string; // Human-readable balance
+  balance: string;
+  balanceFormatted: string;
   decimals: number;
+  usdValue?: number;
 }
 
 export interface IntentsBalances {
   accountId: string;
   tokens: TokenBalance[];
+  totalUsdValue: number;
   timestamp: Date;
 }
 
 /**
- * Get all token balances in INTENTS for an account
- * 
- * @param evmPrivateKey - EVM private key for signing
- * @param evmAddress - EVM address (used as INTENTS account ID)
- * @returns Token balances
+ * Supported tokens for INTENTS balance queries.
+ * Maps token asset IDs to metadata for proper formatting.
  */
-export async function getIntentsBalances(
-  evmPrivateKey: string,
-  evmAddress: string
-): Promise<IntentsBalances> {
-  logger.info('Fetching INTENTS balances', { evmAddress });
+const SUPPORTED_TOKENS: Record<string, { symbol: string; decimals: number }> = {
+  'nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near': { symbol: 'USDC', decimals: 6 },
+  'nep141:eth-0xdac17f958d2ee523a2206206994597c13d831ec7.omft.near': { symbol: 'USDT', decimals: 6 },
+  'nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near': { symbol: 'USDC', decimals: 6 },
+  'nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near': { symbol: 'USDC', decimals: 6 },
+  'nep141:sol.omft.near': { symbol: 'SOL', decimals: 9 },
+  'nep141:eth.omft.near': { symbol: 'ETH', decimals: 18 },
+  'nep141:btc.omft.near': { symbol: 'BTC', decimals: 8 },
+  'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1': { symbol: 'USDC', decimals: 6 },
+  'nep141:usdt.tether-token.near': { symbol: 'USDT', decimals: 6 },
+  'nep141:wrap.near': { symbol: 'NEAR', decimals: 24 },
+};
+
+/**
+ * Get token balances in intents.near for an EVM address.
+ * This is a view-only call - no private key required.
+ *
+ * @param evmAddress - EVM address (0x...) used as INTENTS account ID
+ * @returns Token balances with formatted amounts
+ */
+export async function getIntentsBalances(evmAddress: string): Promise<IntentsBalances> {
+  const accountId = evmAddress.toLowerCase();
+  logger.info('Fetching INTENTS balances', { accountId });
 
   try {
-    const accountId = evmAddress.toLowerCase();
-
-    // Connect to NEAR
-    const keyPair = generateNearKeyPairFromEVM(evmPrivateKey);
-    const keyStore = new keyStores.InMemoryKeyStore();
-    await keyStore.setKey('mainnet', accountId, keyPair);
-
+    // Connect to NEAR (read-only, no key needed)
     const near = await connect({
       networkId: 'mainnet',
-      keyStore,
+      keyStore: new keyStores.InMemoryKeyStore(),
       nodeUrl: getNearRpcUrl(),
     });
 
-    const account = await near.account(accountId);
+    const viewAccount = await near.account('');
+    const tokenIds = Object.keys(SUPPORTED_TOKENS);
 
-    // Query NEAR RPC for account balances
-    // The INTENTS contract stores balances as FT (Fungible Token) balances
-    logger.info('Querying INTENTS contract for balances...', { accountId });
-
-    // Call the NEAR contract to get balances
-    // The intents.near contract has a view method to get account balances
-    const balances = await account.viewFunction({
+    // Query intents.near using NEP-245 Multi-Token standard
+    const rawBalances = await viewAccount.viewFunction({
       contractId: 'intents.near',
-      methodName: 'get_account_balances',
-      args: { account_id: accountId },
+      methodName: 'mt_batch_balance_of',
+      args: { account_id: accountId, token_ids: tokenIds },
+    }) as string[];
+
+    // Parse results into structured format
+    const tokens: TokenBalance[] = [];
+    let totalUsdValue = 0;
+
+    rawBalances.forEach((balance, index) => {
+      const balanceNum = BigInt(balance || '0');
+      if (balanceNum > 0n) {
+        const assetId = tokenIds[index];
+        const meta = SUPPORTED_TOKENS[assetId];
+        const balanceFormatted = formatBalance(balance, meta.decimals);
+
+        // Estimate USD value (stablecoins = 1:1, others need price feed)
+        const usdValue = ['USDC', 'USDT'].includes(meta.symbol)
+          ? parseFloat(balanceFormatted)
+          : 0;
+
+        totalUsdValue += usdValue;
+
+        tokens.push({
+          assetId,
+          symbol: meta.symbol,
+          balance,
+          balanceFormatted,
+          decimals: meta.decimals,
+          usdValue,
+        });
+      }
     });
 
-    logger.info('Raw balances received from INTENTS', { balances });
-
-    // Parse balances into structured format
-    const tokens: TokenBalance[] = [];
-
-    if (balances && typeof balances === 'object') {
-      for (const [assetId, balance] of Object.entries(balances)) {
-        // Extract symbol from asset ID
-        // Format: nep141:base-0x833589... or nep141:token.near
-        let symbol = 'UNKNOWN';
-        if (assetId.includes('base-')) {
-          symbol = 'USDC (Base)';
-        } else if (assetId.includes('eth-')) {
-          symbol = 'Token (Ethereum)';
-        } else if (assetId.includes('arb-')) {
-          symbol = 'Token (Arbitrum)';
-        } else if (assetId.includes('nbtc')) {
-          symbol = 'BTC';
-        } else if (assetId.includes('wrap.near')) {
-          symbol = 'NEAR';
-        }
-
-        // Assume 6 decimals for most tokens (we can enhance this later)
-        const decimals = 6;
-        const balanceStr = balance as string;
-        const balanceFormatted = (parseInt(balanceStr) / Math.pow(10, decimals)).toFixed(decimals);
-
-        if (parseInt(balanceStr) > 0) {
-          tokens.push({
-            assetId,
-            symbol,
-            balance: balanceStr,
-            balanceFormatted,
-            decimals,
-          });
-        }
-      }
-    }
-
-    logger.info('Parsed INTENTS balances', {
+    logger.info('INTENTS balances fetched', {
       accountId,
       tokenCount: tokens.length,
       tokens: tokens.map(t => `${t.symbol}: ${t.balanceFormatted}`),
+      totalUsdValue,
     });
 
-    return {
-      accountId,
-      tokens,
-      timestamp: new Date(),
-    };
+    return { accountId, tokens, totalUsdValue, timestamp: new Date() };
 
   } catch (error: any) {
-    logger.error('Failed to fetch INTENTS balances', {
-      error: error.message,
-      evmAddress,
-    });
-    throw error;
+    logger.error('Failed to fetch INTENTS balances', { error: error.message, accountId });
+    // Return empty balances on error (graceful degradation)
+    return { accountId, tokens: [], totalUsdValue: 0, timestamp: new Date() };
   }
 }
 
 /**
- * Get balance for a specific token in INTENTS
- * 
- * @param evmPrivateKey - EVM private key
- * @param evmAddress - EVM address
- * @param assetId - Token asset ID (e.g., 'nep141:base-0x833589...')
- * @returns Token balance or null if not found
+ * Get USDC balance specifically (most common use case for deposits).
+ * Aggregates all USDC variants (ETH, Base, Arbitrum, etc.)
  */
-export async function getTokenBalance(
-  evmPrivateKey: string,
-  evmAddress: string,
-  assetId: string
-): Promise<TokenBalance | null> {
-  const balances = await getIntentsBalances(evmPrivateKey, evmAddress);
-  return balances.tokens.find(t => t.assetId === assetId) || null;
+export async function getUsdcBalance(evmAddress: string): Promise<number> {
+  const balances = await getIntentsBalances(evmAddress);
+  return balances.tokens
+    .filter(t => t.symbol === 'USDC' || t.symbol === 'USDT')
+    .reduce((sum, t) => sum + parseFloat(t.balanceFormatted), 0);
 }
 
 /**
- * Find USDC tokens in INTENTS (any chain)
- * 
- * @param evmPrivateKey - EVM private key
- * @param evmAddress - EVM address
- * @returns Array of USDC token balances
+ * Format raw balance to human-readable string
  */
-export async function findUSDCBalances(
-  evmPrivateKey: string,
-  evmAddress: string
-): Promise<TokenBalance[]> {
-  const balances = await getIntentsBalances(evmPrivateKey, evmAddress);
-  
-  // Find all USDC tokens (Base, Ethereum, Arbitrum, etc.)
-  return balances.tokens.filter(t => 
-    t.assetId.includes('0x833589fcd6edb6e08f4c7c32d4f71b54bda02913') || // Base USDC
-    t.assetId.includes('0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48') || // Ethereum USDC
-    t.assetId.includes('0xaf88d065e77c8cc2239327c5edb3a432268e5831') || // Arbitrum USDC
-    t.assetId.includes('17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1') // Generic USDC
-  );
+function formatBalance(rawBalance: string, decimals: number): string {
+  const balance = BigInt(rawBalance || '0');
+  const divisor = BigInt(10 ** decimals);
+  const whole = balance / divisor;
+  const fraction = balance % divisor;
+  const fractionStr = fraction.toString().padStart(decimals, '0');
+  return `${whole}.${fractionStr.slice(0, 6)}`;
 }
 
+// Legacy exports for backward compatibility
+export async function getTokenBalance(
+  _evmPrivateKey: string,
+  evmAddress: string,
+  assetId: string
+): Promise<TokenBalance | null> {
+  const balances = await getIntentsBalances(evmAddress);
+  return balances.tokens.find(t => t.assetId === assetId) || null;
+}
+
+export async function findUSDCBalances(
+  _evmPrivateKey: string,
+  evmAddress: string
+): Promise<TokenBalance[]> {
+  const balances = await getIntentsBalances(evmAddress);
+  return balances.tokens.filter(t => t.symbol === 'USDC' || t.symbol === 'USDT');
+}

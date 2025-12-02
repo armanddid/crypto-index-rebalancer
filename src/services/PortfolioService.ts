@@ -333,11 +333,12 @@ export class PortfolioService {
         decimals: 6, // USDC always has 6 decimals
       };
     } else {
-      // For INTENTS swaps, we use the token with blockchain 'near' as a proxy
-      // since all assets in INTENTS are accessible via NEAR
-      fromToken = await nearIntentsClient.findTokenBySymbol(fromSymbol, 'near');
+      // For INTENTS swaps, find any token with the symbol (no blockchain filter)
+      // since INTENTS supports cross-chain swaps
+      fromToken = await nearIntentsClient.findTokenBySymbol(fromSymbol);
     }
-    const toToken = await nearIntentsClient.findTokenBySymbol(toSymbol, 'near');
+    // Don't filter by blockchain - INTENTS can swap to any supported chain
+    const toToken = await nearIntentsClient.findTokenBySymbol(toSymbol);
 
     logger.debug('Found tokens', {
       fromSymbol,

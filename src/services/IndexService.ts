@@ -23,14 +23,17 @@ export class IndexService {
     totalUsdcAmount?: number,
     baseAssetId?: string
   ): Promise<boolean> {
-    logger.info('Starting initial portfolio construction', { indexId });
+    logger.info('Starting initial portfolio construction', { indexId, totalUsdcAmount, baseAssetId });
 
     const index = findIndexById(indexId);
     if (!index) {
       throw new Error('Index not found');
     }
 
-    if (index.status !== 'PENDING') {
+    // Allow construction from PENDING or pending_funding status
+    // Also allow if ACTIVE (for re-construction after deposits)
+    const allowedStatuses = ['PENDING', 'pending_funding', 'ACTIVE'];
+    if (!allowedStatuses.includes(index.status)) {
       throw new Error(`Cannot construct portfolio: index status is ${index.status}`);
     }
 
@@ -40,9 +43,14 @@ export class IndexService {
       throw new Error('Account not found');
     }
 
-    // For now, we'll assume the user has funded their account with USDC
-    // In a real implementation, we'd check the actual INTENTS balance
-    // TODO: Implement INTENTS balance checking
+    // If totalUsdcAmount or baseAssetId provided, caller has already verified balance
+    // Otherwise we trust the caller (MCP) to have checked
+    logger.info('Construction parameters', {
+      indexId,
+      walletAddress: account.walletAddress,
+      providedAmount: totalUsdcAmount,
+      baseAssetId
+    });
 
     // Get target allocation (already parsed from DB)
     const targetAllocation: AssetAllocation[] = index.targetAllocation;
